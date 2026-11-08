@@ -42,7 +42,7 @@ const FEEDS_CONFIG = `feeds:
 
 export default defineRailway(() => {
   // Deploy a commit only once its GitHub checks (CI, Railway apply) pass
-  const transitTracker = github("conor-ob/transit-tracker", {
+  const transitTracker = github("conor-ob/transit-tracker-proxy", {
     checkSuites: true,
   });
 
