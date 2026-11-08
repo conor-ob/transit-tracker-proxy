@@ -11,7 +11,7 @@ fi
 
 device="http://$1"
 
-base_url="wss://transit-tracker.conorob.me/"
+base_url="wss://transit-tracker-proxy.conorob.me/"
 feed_code="nta"
 # route,stop,offset[,direction]. With feed_code set, IDs go without the "nta:" prefix.
 schedule=$(

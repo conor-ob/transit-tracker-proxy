@@ -109,7 +109,11 @@ export default defineRailway(() => {
   // so neither needs a public domain
   const gateway = service("gateway", {
     source: transitTracker,
-    domains: [{ domain: "transit-tracker.conorob.me", port: 8080 }],
+    // transit-tracker.conorob.me stays until every Device is moved to the new domain
+    domains: [
+      { domain: "transit-tracker-proxy.conorob.me", port: 8080 },
+      { domain: "transit-tracker.conorob.me", port: 8080 },
+    ],
     env: {
       PORT: "8080",
       TRANSIT_TRACKER_API_URL: railwayPrivateNetworkingUrl(transitTrackerApi),
