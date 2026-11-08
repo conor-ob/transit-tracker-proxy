@@ -73,7 +73,7 @@ These are `preserve()` in the config, so they're set in the Railway dashboard an
 
 1. Set the secrets above on the `transit-tracker-api` service.
 2. Run the first GTFS import: `railway ssh --service transit-tracker-api`, then `node ./dist/cli sync`.
-3. Add the DNS records Railway shows for the `gateway` service's custom domain, `transit-tracker.conorob.me`, at your DNS provider.
+3. Add the DNS records Railway shows for the `gateway` service's custom domain, `transit-tracker-proxy.conorob.me`, at your DNS provider.
 
 ## Using it with a Transit Tracker board
 
