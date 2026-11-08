@@ -1,5 +1,5 @@
 {
-  "name": "transit-tracker",
+  "name": "transit-tracker-proxy",
   "private": true,
   "description": "Transit Tracker API deployment for Irish public transport on Railway",
   "type": "module",
