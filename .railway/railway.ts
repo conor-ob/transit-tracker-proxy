@@ -130,7 +130,7 @@ export default defineRailway(() => {
   const backend = group("backend", [transitTrackerApi, scheduleProxy]);
   const gatewayGroup = group("gateway", [gateway]);
 
-  return project("transit-tracker", {
+  return project("transit-tracker-proxy", {
     resources: [backend, database, gatewayGroup],
   });
 });
