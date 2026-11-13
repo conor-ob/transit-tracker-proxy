@@ -18,9 +18,9 @@ schedule=$(
   IFS=";"
   pairs=(
     "BRAY-HOWTH-I,8250IR0111,0,0" # DART at Sandycove and Glasthule, northbound
-    "3 111 e a,8250DB003062,0"    # 111 at Breffni Road
-    "3 59 d a,8250DB003062,0"     # 59 at Breffni Road
-    "1 7D c a,8250DB003062,0"     # 7D at Breffni Road
+    "3_111_e_a,8250DB003062,0"    # 111 at Breffni Road
+    "3_59_d_a,8250DB003062,0"     # 59 at Breffni Road
+    "1_7D_c_a,8250DB003062,0"     # 7D at Breffni Road
   )
   echo "${pairs[*]}"
 )
@@ -29,9 +29,9 @@ route_styles=$(
   IFS=$'\n'
   styles=(
     "BRAY-HOWTH-I;DART;5AFF6D"
-    "3 111 e a;111;0072FF"
-    "3 59 d a;59;0072FF"
-    "1 7D c a;7D;FFD339"
+    "3_111_e_a;111;0072FF"
+    "3_59_d_a;59;0072FF"
+    "1_7D_c_a;7D;FFD339"
   )
   echo "${styles[*]}"
 )
