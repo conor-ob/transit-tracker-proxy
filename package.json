@@ -12,9 +12,9 @@
   },
   "packageManager": "pnpm@12.15.0",
   "devDependencies": {
-    "@biomejs/biome": "2.6.2",
-    "railway": "^3.16.0",
-    "turbo": "^2.11.5",
+    "@biomejs/biome": "2.6.8",
+    "railway": "^3.17.0",
+    "turbo": "^2.11.13",
     "typescript": "catalog:"
   },
   "scripts": {
