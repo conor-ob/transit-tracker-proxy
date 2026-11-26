@@ -53,8 +53,8 @@ now_str="Now"
 min_long_str="min"
 min_short_str="m"
 hours_short_str="h"
-# 0-255, so 128 is 50%. The Device's up and down buttons change it until the next run.
-brightness=128
+# 0-255, so 64 is 25%. The Device's up and down buttons change it until the next run.
+brightness=64
 
 # The Device's web server refuses a POST without Content-Length. On a poor
 # 2.4 GHz network the Device answers slowly or not at all, so time out and retry.
