@@ -94,7 +94,7 @@ A DART station is a single stop served in both directions, so a board subscribed
 nta:BRAY-HOWTH-I,nta:8220IR0134,,1
 ```
 
-For the DART, Direction `0` is northbound (Howth/Malahide) and `1` is southbound (Bray/Greystones). The proxy strips the field before forwarding to `transit-tracker-api`, drops trips travelling the other way (trips with no `directionId` are kept), and trims to the client's own limit. Pairs without a Direction are untouched. See [ADR 0001](docs/adr/0001-customize-schedules-in-a-proxy.md) for why this lives in a proxy rather than a fork.
+For the DART, Direction `0` is northbound (Howth/Malahide) and `1` is southbound (Bray/Greystones). The NTA feed has also split the DART into one route per direction: `BRAY-HOWTH-I` carries only southbound trips and `BRAY-HOWTH-O` only northbound ones, so a pair whose route and Direction disagree (e.g. `BRAY-HOWTH-I` with Direction `0`) shows nothing. Check `/stops/<stop id>/routes` for a stop's current routes. The proxy strips the field before forwarding to `transit-tracker-api`, drops trips travelling the other way (trips with no `directionId` are kept), and trims to the client's own limit. Pairs without a Direction are untouched. See [ADR 0001](docs/adr/0001-customize-schedules-in-a-proxy.md) for why this lives in a proxy rather than a fork.
 
 ## Configuring the Device
 
