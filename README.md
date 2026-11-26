@@ -34,7 +34,7 @@ You need Docker, pnpm and an NTA API key, which you can get free from the [NTA d
    pnpm compose:up
    ```
 
-The API listens on <http://localhost:3000>, and `schedule-proxy` on <http://localhost:8080> (WebSocket at the root and `/schedule/...`, with [Direction filters](#direction-filters)). To check it's running, open <http://localhost:3000/feeds>, which lists the configured feeds. The OpenAPI spec is served at `/openapi`.
+The API listens on <http://localhost:3000>, and `schedule-proxy` on <http://localhost:8080> (WebSocket at the root and `/schedule/...`, with [Walk times](#walk-times) and [Direction filters](#direction-filters)). To check it's running, open <http://localhost:3000/feeds>, which lists the configured feeds. The OpenAPI spec is served at `/openapi`.
 
 After the first import, the API syncs the feed daily at 03:00 UTC (`FEED_SYNC_SCHEDULE`). Stop the stack with `pnpm compose:down`. To wipe the local database as well, run `docker compose down -v`.
 
@@ -43,7 +43,7 @@ After the first import, the API syncs the feed daily at 03:00 UTC (`FEED_SYNC_SC
 The Railway project is defined in code in [`.railway/railway.ts`](.railway/railway.ts) and has these services:
 
 - **gateway**: Caddy ([`apps/gateway`](apps/gateway)) on the public domain. It sends WebSocket upgrades and `/schedule/*` to `schedule-proxy`, and everything else to `transit-tracker-api`, both over private networking
-- **schedule-proxy**: applies [Direction filters](#direction-filters) to the schedule ([`apps/schedule-proxy`](apps/schedule-proxy)), and uses `/healthz` as its health check
+- **schedule-proxy**: applies [Walk times](#walk-times) and [Direction filters](#direction-filters) to the schedule ([`apps/schedule-proxy`](apps/schedule-proxy)), and uses `/healthz` as its health check
 
 - **transit-tracker-api**: the `ghcr.io/tjhorner/transit-tracker-api:main` image on port 3000. It runs `pnpm gtfs:db:migrate` before each deploy and uses `/healthz` as its health check
 - **postgres**: Railway-managed, stores the imported GTFS data
@@ -86,9 +86,19 @@ Four upstream projects make up the stack. This repo only deploys the first. Use 
 - **[esphome-transit-tracker](https://github.com/tjhorner/esphome-transit-tracker)**: the `transit_tracker` [ESPHome](https://esphome.io/) external component that runs on the board. It connects to the API, then draws the schedule on any ESPHome display (it's tuned for a 128x64 HUB75 matrix). Use it directly to put departures on your own hardware or into your own ESPHome or Home Assistant config. Set `base_url` to this deployment with a `wss://` scheme, and optionally set `feed_code: nta`. The configurator's "Generate YAML" button writes the `transit_tracker:` block for you. [`examples/matrix-portal-s3.yaml`](https://github.com/tjhorner/esphome-transit-tracker/blob/main/examples/matrix-portal-s3.yaml) is a complete device config.
 - **[transit-tracker](https://github.com/EastsideUrbanism/transit-tracker)**: the board itself, with its build guide and docs site. [`firmware/transit-tracker.yaml`](https://github.com/EastsideUrbanism/transit-tracker/blob/main/firmware/transit-tracker.yaml) is the stock firmware's ESPHome config, which defines every setting the configurator and [`scripts/configure-device.sh`](scripts/configure-device.sh) can change over the Device's web server.
 
+## Walk times
+
+The third field of a Route-stop pair carries a Walk time: the whole number of seconds it takes to reach the stop. Trips departing sooner than that are hidden, and the times shown stay real. Blank or `0` means no Walk time, and anything else (negative, fractional, not a number) is rejected as a bad request.
+
+```txt
+nta:BRAY-HOWTH-O,nta:8250IR0111,600
+```
+
+The proxy forwards a Walk time to `transit-tracker-api` as a negative offset (`600` becomes `-600`), so upstream drops trips that can't be caught before applying its limit, and in `nextPerRoute` picks each route's next catchable trip. The proxy then adds the Walk time back to each trip's `arrivalTime` and `departureTime`. Upstream sorted the trips by their shifted times, so the proxy sorts them again by real time (departure if the client sent `sortByDeparture`, otherwise arrival) before trimming to the client's limit. Upstream picks its 20 trips by shifted time, so with very different Walk times across pairs, a trip that would just make the client's limit can occasionally be missing. If the same route and stop appear twice, the first pair's Walk time wins, as upstream's offset does. Upstream's own offset, which shifts the times shown, isn't available through the proxy. Upstream pushes about every 30 seconds, so a trip can stay on the Device for one more update after it falls inside its Walk time. See [ADR 0001](docs/adr/0001-customize-schedules-in-a-proxy.md).
+
 ## Direction filters
 
-A DART station is a single stop served in both directions, so a board subscribed to it shows trains both ways. `schedule-proxy` lets a Route-stop pair carry a Direction (the route's GTFS `direction_id`, `0` or `1`) as a fourth field, `route,stop,offset,direction`, where the Offset may be blank:
+A DART station is a single stop served in both directions, so a Device subscribed to it shows trains both ways. `schedule-proxy` lets a Route-stop pair carry a Direction (the route's GTFS `direction_id`, `0` or `1`) as a fourth field, `route,stop,walk time,direction`, where the [Walk time](#walk-times) may be blank:
 
 ```txt
 nta:BRAY-HOWTH-I,nta:8220IR0134,,1
@@ -108,7 +118,7 @@ It logs each request with its timing and retries a request up to 5 times, since 
 
 To find the Device's IP, press its up and down buttons together. The display switches to a page showing the IP, and pressing both again goes back to the schedule. The firmware also announces the Device over mDNS as `transit-tracker-xxxxxx.local`, where `xxxxxx` is the end of its MAC address, and the script accepts that name in place of an IP. On macOS, list the Devices on the LAN with `dns-sd -B _esphomelib._tcp`, and resolve one to an IP with `dns-sd -G v4 transit-tracker-xxxxxx.local`. The router's DHCP client list shows the same name, and a DHCP reservation there keeps the IP from changing.
 
-With `feed_code_config` set to `nta`, route and stop IDs in `schedule_config` go without the `nta:` prefix (a prefixed ID matches no trips). The firmware caps `schedule_config` at 255 characters, which limits how many Route-stop pairs a Device can have.
+With `feed_code_config` set to `nta`, route and stop IDs in `schedule_config` go without the `nta:` prefix (a prefixed ID matches no trips). Each pair's third field is its [Walk time](#walk-times) in seconds, not the firmware's offset. The firmware caps `schedule_config` at 255 characters, which limits how many Route-stop pairs a Device can have.
 
 Route styles are set in `route_styles_config`, one `route;name;colour` line per route, with route IDs unprefixed as in the schedule. The name replaces the route's own name on the Device, so each line repeats it. Routes without a line fall back to the feed's colour, or the firmware's default when the feed has none.
 

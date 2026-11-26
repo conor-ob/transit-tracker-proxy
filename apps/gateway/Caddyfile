@@ -29,7 +29,7 @@
 	encode zstd gzip
 
 	# websocket upgrades (what devices use) and the rest schedule go through
-	# the schedule proxy, which applies direction filters
+	# the schedule proxy, which applies walk times and direction filters
 	@schedule expression header({'Upgrade': 'websocket'}) || path('/schedule/*')
 
 	handle @schedule {

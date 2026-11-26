@@ -2,10 +2,11 @@ import type { FastifyInstance } from "fastify";
 import { type RawData, WebSocket } from "ws";
 
 import {
-  applyDirectionFilters,
-  InvalidDirectionError,
+  customizeSchedule,
+  InvalidRouteStopPairError,
   parseRouteStopPairs,
   type RouteStopPair,
+  type ScheduleOptions,
   type Trip,
   toUpstreamRouteStopPairs,
 } from "~/schedule/route-stop-pairs";
@@ -19,9 +20,8 @@ interface Message {
   data?: unknown;
 }
 
-interface Subscription {
+interface Subscription extends ScheduleOptions {
   pairs: RouteStopPair[];
-  limit: number;
 }
 
 function parseMessage(raw: RawData): Message | null {
@@ -88,7 +88,7 @@ export default function (fastify: FastifyInstance, apiWsUrl: string) {
       try {
         pairs = parseRouteStopPairs(data.routeStopPairs);
       } catch (error) {
-        if (error instanceof InvalidDirectionError) {
+        if (error instanceof InvalidRouteStopPairError) {
           // Upstream's reply to a bad request, which leaves the connection open
           device.send(
             JSON.stringify({ kind: "invalidInput", error: error.message }),
@@ -101,7 +101,12 @@ export default function (fastify: FastifyInstance, apiWsUrl: string) {
       // An invalid limit goes up as it is, so upstream rejects it
       const limit = isValidLimit(data.limit) ? data.limit : null;
       if (limit !== null) {
-        subscription = { pairs, limit };
+        subscription = {
+          pairs,
+          limit,
+          sortBy:
+            data.sortByDeparture === true ? "departureTime" : "arrivalTime",
+        };
       }
 
       sendToApi(
@@ -140,10 +145,10 @@ export default function (fastify: FastifyInstance, apiWsUrl: string) {
           ...message,
           data: {
             ...data,
-            trips: applyDirectionFilters(
+            trips: customizeSchedule(
               data.trips as Trip[],
               subscription.pairs,
-              subscription.limit,
+              subscription,
             ),
           },
         }),

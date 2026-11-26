@@ -86,7 +86,7 @@ export default defineRailway(() => {
     },
   });
 
-  // Applies Direction filters to the schedule, between the gateway and the
+  // Applies Walk times and Direction filters to the schedule, between the gateway and the
   // unmodified transit-tracker-api
   const scheduleProxy = service("schedule-proxy", {
     source: transitTracker,

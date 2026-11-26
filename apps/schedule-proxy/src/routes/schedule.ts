@@ -1,8 +1,8 @@
 import type { FastifyInstance } from "fastify";
 
 import {
-  applyDirectionFilters,
-  InvalidDirectionError,
+  customizeSchedule,
+  InvalidRouteStopPairError,
   parseRouteStopPairs,
   type Trip,
   toUpstreamRouteStopPairs,
@@ -20,7 +20,7 @@ export default function (fastify: FastifyInstance, apiUrl: string) {
     try {
       pairs = parseRouteStopPairs(request.params.routeStopPairs);
     } catch (error) {
-      if (error instanceof InvalidDirectionError) {
+      if (error instanceof InvalidRouteStopPairError) {
         // Upstream's (NestJS) bad request shape
         return reply.code(400).send({
           message: error.message,
@@ -51,6 +51,12 @@ export default function (fastify: FastifyInstance, apiUrl: string) {
     }
 
     const schedule = (await response.json()) as { trips: Trip[] };
-    return { trips: applyDirectionFilters(schedule.trips, pairs, limit) };
+    // Upstream's REST schedule always sorts by arrival
+    return {
+      trips: customizeSchedule(schedule.trips, pairs, {
+        limit,
+        sortBy: "arrivalTime",
+      }),
+    };
   });
 }

@@ -13,14 +13,15 @@ device="http://$1"
 
 base_url="wss://transit-tracker-proxy.conorob.me/"
 feed_code="nta"
-# route,stop,offset[,direction]. With feed_code set, IDs go without the "nta:" prefix.
+# route,stop,walk time[,direction], walk time in seconds. With feed_code set, IDs go
+# without the "nta:" prefix.
 schedule=$(
   IFS=";"
   pairs=(
-    "BRAY-HOWTH-O,8250IR0111,0,0" # DART at Sandycove and Glasthule, northbound
-    "3_111_e_a,8250DB003062,0"    # 111 at Breffni Road
-    "3_59_d_a,8250DB003062,0"     # 59 at Breffni Road
-    "1_7D_c_a,8250DB003062,0"     # 7D at Breffni Road
+    "BRAY-HOWTH-O,8250IR0111,600,0" # DART at Sandycove and Glasthule, northbound, a 12-minute walk set to 10
+    "3_111_e_a,8250DB003062,120"  # 111 at Breffni Road, a 2-minute walk
+    "3_59_d_a,8250DB003062,120"   # 59 at Breffni Road
+    "1_7D_c_a,8250DB003062,120"   # 7D at Breffni Road
   )
   echo "${pairs[*]}"
 )

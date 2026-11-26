@@ -6,7 +6,7 @@ const { parsed, error } = dotenv({ encoding: "utf8", quiet: true });
 const envSchema = z.object({
   NODE_ENV: z.enum(["production", "development", "test"]),
   PORT: z.coerce.number().int(),
-  // The unmodified transit-tracker-api, which the proxy forwards to without Direction filters
+  // The unmodified transit-tracker-api, which the proxy forwards to with Walk times as negative offsets and without Direction filters
   TRANSIT_TRACKER_API_URL: z.url(),
   LOG_LEVEL: z
     .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])
