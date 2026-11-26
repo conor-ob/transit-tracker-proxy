@@ -53,6 +53,8 @@ now_str="Now"
 min_long_str="min"
 min_short_str="m"
 hours_short_str="h"
+# 0-255, so 128 is 50%. The Device's up and down buttons change it until the next run.
+brightness=128
 
 # The Device's web server refuses a POST without Content-Length. On a poor
 # 2.4 GHz network the Device answers slowly or not at all, so time out and retry.
@@ -88,6 +90,7 @@ post "text/now_str_config/set?value=$(encode "$now_str")"
 post "text/min_long_str_config/set?value=$(encode "$min_long_str")"
 post "text/min_short_str_config/set?value=$(encode "$min_short_str")"
 post "text/hours_short_str_config/set?value=$(encode "$hours_short_str")"
+post "light/$(encode "Display Brightness")/turn_on?brightness=$brightness"
 post "button/Restart/press"
 
 echo "Configured $1, restarting"
