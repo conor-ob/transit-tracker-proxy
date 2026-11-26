@@ -29,10 +29,11 @@ updates:
       # Without prefix-development, dev dependencies use this prefix too.
       prefix: chore
       include: scope
-    # Repo exceptions: deliberate ignores, for example:
-    # ignore:
-    #   - dependency-name: "@types/node"
-    #     update-types: ["version-update:semver-major"]
+    # Repo exceptions: deliberate ignores.
+    ignore:
+      # @types/node tracks the Node runtime major, moved deliberately with it.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /
@@ -72,8 +73,8 @@ updates:
     commit-message:
       prefix: build
       include: scope
-    # Repo exceptions: Node majors follow package.json engines, so they're
-    # moved by hand.
+    # Repo exceptions: Node majors follow .nvmrc and package.json engines, so
+    # they're moved by hand.
     ignore:
       - dependency-name: node
         update-types: ["version-update:semver-major"]
