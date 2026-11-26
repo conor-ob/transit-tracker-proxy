@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { DART, PEARSE, trips, useScheduleProxy } from "~/test/fake-api";
+import {
+  BUS,
+  BUS_STOP,
+  busTrips,
+  DART,
+  PEARSE,
+  trips,
+  useScheduleProxy,
+} from "~/test/fake-api";
 
 describe("REST schedule", () => {
   const proxy = useScheduleProxy();
@@ -37,12 +45,15 @@ describe("REST schedule", () => {
     });
   });
 
-  it("restores each pair's own Walk time", async () => {
+  it("restores each pair's own Walk time, in order of real arrival", async () => {
     const response = await proxy.server.inject(
-      `/schedule/${encodeURIComponent(`${DART},${PEARSE},600;46A,8220DB000123,120`)}?limit=2`,
+      `/schedule/${encodeURIComponent(`${DART},${PEARSE},600;${BUS},${BUS_STOP},120`)}?limit=3`,
     );
 
-    expect(response.json()).toEqual({ trips: [trips[2], trips[3]] });
+    // Upstream returns trip-2 before bus-0, sorted by their shifted times
+    expect(response.json()).toEqual({
+      trips: [busTrips[0], trips[2], busTrips[1]],
+    });
   });
 
   it.each(["-300", "soon", "1.5"])(

@@ -2,7 +2,15 @@ import { once } from "node:events";
 import { describe, expect, it } from "vitest";
 import { WebSocket } from "ws";
 
-import { DART, PEARSE, trips, useScheduleProxy } from "~/test/fake-api";
+import {
+  BUS,
+  BUS_STOP,
+  busTrips,
+  DART,
+  PEARSE,
+  trips,
+  useScheduleProxy,
+} from "~/test/fake-api";
 
 describe("WebSocket schedule", () => {
   const proxy = useScheduleProxy();
@@ -85,6 +93,20 @@ describe("WebSocket schedule", () => {
 
     // trip-1 departs 6 minutes from now, inside the 10-minute Walk time
     expect(schedule.data.trips).toEqual([trips[3], trips[5], trips[7]]);
+  });
+
+  it("orders a Device's trips by real departure when it sorts by departure", async () => {
+    const [, schedule] = (await subscribe(
+      {
+        routeStopPairs: `${DART},${PEARSE},600;${BUS},${BUS_STOP},120`,
+        limit: 3,
+        sortByDeparture: true,
+      },
+      2,
+    )) as [unknown, { data: { trips: typeof trips } }];
+
+    // Upstream sends trip-2 before bus-0, sorted by their shifted times
+    expect(schedule.data.trips).toEqual([busTrips[0], trips[2], busTrips[1]]);
   });
 
   it("rejects an invalid Walk time without subscribing upstream", async () => {

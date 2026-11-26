@@ -107,3 +107,25 @@ export function restoreWalkTimes<T extends Trip>(
         };
   });
 }
+
+export interface ScheduleOptions {
+  // The client's own limit
+  limit: number;
+  // What upstream sorted by: departureTime when the client asked for
+  // sortByDeparture, otherwise arrivalTime
+  sortBy: "arrivalTime" | "departureTime";
+}
+
+// Turns upstream's trips into what the client asked for. Upstream sorted by
+// times shifted back by each pair's Walk time, so once they're restored, pairs
+// with different Walk times can be out of order: sort again before trimming
+export function customizeSchedule<T extends Trip>(
+  trips: T[],
+  pairs: RouteStopPair[],
+  { limit, sortBy }: ScheduleOptions,
+): T[] {
+  const restored = restoreWalkTimes(trips, pairs).sort(
+    (a, b) => a[sortBy] - b[sortBy],
+  );
+  return applyDirectionFilters(restored, pairs, limit);
+}

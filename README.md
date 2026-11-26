@@ -94,11 +94,11 @@ The third field of a Route-stop pair carries a Walk time: the whole number of se
 nta:BRAY-HOWTH-O,nta:8250IR0111,600
 ```
 
-The proxy forwards a Walk time to `transit-tracker-api` as a negative offset (`600` becomes `-600`), so upstream drops trips that can't be caught before applying its limit, and in `nextPerRoute` picks each route's next catchable trip. The proxy then adds the Walk time back to each trip's `arrivalTime` and `departureTime`. If the same route and stop appear twice, the first pair's Walk time wins, as upstream's offset does. Upstream's own offset, which shifts the times shown, isn't available through the proxy. Upstream pushes about every 30 seconds, so a trip can stay on the Device for one more update after it falls inside its Walk time. See [ADR 0001](docs/adr/0001-customize-schedules-in-a-proxy.md).
+The proxy forwards a Walk time to `transit-tracker-api` as a negative offset (`600` becomes `-600`), so upstream drops trips that can't be caught before applying its limit, and in `nextPerRoute` picks each route's next catchable trip. The proxy then adds the Walk time back to each trip's `arrivalTime` and `departureTime`. Upstream sorted the trips by their shifted times, so the proxy sorts them again by real time (departure if the client sent `sortByDeparture`, otherwise arrival) before trimming to the client's limit. Upstream picks its 20 trips by shifted time, so with very different Walk times across pairs, a trip that would just make the client's limit can occasionally be missing. If the same route and stop appear twice, the first pair's Walk time wins, as upstream's offset does. Upstream's own offset, which shifts the times shown, isn't available through the proxy. Upstream pushes about every 30 seconds, so a trip can stay on the Device for one more update after it falls inside its Walk time. See [ADR 0001](docs/adr/0001-customize-schedules-in-a-proxy.md).
 
 ## Direction filters
 
-A DART station is a single stop served in both directions, so a board subscribed to it shows trains both ways. `schedule-proxy` lets a Route-stop pair carry a Direction (the route's GTFS `direction_id`, `0` or `1`) as a fourth field, `route,stop,walk time,direction`, where the [Walk time](#walk-times) may be blank:
+A DART station is a single stop served in both directions, so a Device subscribed to it shows trains both ways. `schedule-proxy` lets a Route-stop pair carry a Direction (the route's GTFS `direction_id`, `0` or `1`) as a fourth field, `route,stop,walk time,direction`, where the [Walk time](#walk-times) may be blank:
 
 ```txt
 nta:BRAY-HOWTH-I,nta:8220IR0134,,1

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   applyDirectionFilters,
+  customizeSchedule,
   InvalidRouteStopPairError,
   parseRouteStopPairs,
   type RouteStopPair,
@@ -205,5 +206,77 @@ describe("restoreWalkTimes", () => {
     expect(
       restoreWalkTimes([trip("46A", "8220DB000123", 1_800_000_000)], pairs),
     ).toEqual([trip("46A", "8220DB000123", 1_800_000_120)]);
+  });
+});
+
+describe("customizeSchedule", () => {
+  // Real times: the DART departs 10:12 with a 10-minute Walk time, the bus
+  // 10:05 with a 2-minute one. Upstream sorted them by shifted time
+  // (10:02, 10:03), so restored they're out of order
+  const at = (minutes: number) => 1_800_000_000 + minutes * 60;
+  const pairs = parseRouteStopPairs(
+    "BRAY-HOWTH-O,8250IR0111,600,0;3_111_e_a,8250DB003062,120",
+  );
+  const fromUpstream = [
+    {
+      tripId: "dart",
+      routeId: "BRAY-HOWTH-O",
+      stopId: "8250IR0111",
+      directionId: "0",
+      arrivalTime: at(2) - 30,
+      departureTime: at(2),
+    },
+    {
+      tripId: "bus",
+      routeId: "3_111_e_a",
+      stopId: "8250DB003062",
+      directionId: "1",
+      arrivalTime: at(3) + 60,
+      departureTime: at(3),
+    },
+  ];
+
+  it("orders trips by their real times once Walk times are restored", () => {
+    expect(
+      customizeSchedule(fromUpstream, pairs, {
+        limit: 10,
+        sortBy: "departureTime",
+      }).map((trip) => [trip.tripId, trip.departureTime]),
+    ).toEqual([
+      ["bus", at(5)],
+      ["dart", at(12)],
+    ]);
+  });
+
+  it("orders by arrival time when asked to", () => {
+    // Real arrivals: the DART 10:11:30, the bus 10:06
+    expect(
+      customizeSchedule(fromUpstream, pairs, {
+        limit: 10,
+        sortBy: "arrivalTime",
+      }).map((trip) => trip.tripId),
+    ).toEqual(["bus", "dart"]);
+  });
+
+  it("trims to the limit after ordering, keeping the soonest trip", () => {
+    expect(
+      customizeSchedule(fromUpstream, pairs, {
+        limit: 1,
+        sortBy: "departureTime",
+      }).map((trip) => trip.tripId),
+    ).toEqual(["bus"]);
+  });
+
+  it("applies Direction filters before trimming", () => {
+    const southbound = parseRouteStopPairs(
+      "BRAY-HOWTH-O,8250IR0111,600,1;3_111_e_a,8250DB003062,120",
+    );
+
+    expect(
+      customizeSchedule(fromUpstream, southbound, {
+        limit: 10,
+        sortBy: "departureTime",
+      }).map((trip) => trip.tripId),
+    ).toEqual(["bus"]);
   });
 });

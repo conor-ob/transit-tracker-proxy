@@ -1,10 +1,9 @@
 import type { FastifyInstance } from "fastify";
 
 import {
-  applyDirectionFilters,
+  customizeSchedule,
   InvalidRouteStopPairError,
   parseRouteStopPairs,
-  restoreWalkTimes,
   type Trip,
   toUpstreamRouteStopPairs,
 } from "~/schedule/route-stop-pairs";
@@ -52,12 +51,12 @@ export default function (fastify: FastifyInstance, apiUrl: string) {
     }
 
     const schedule = (await response.json()) as { trips: Trip[] };
+    // Upstream's REST schedule always sorts by arrival
     return {
-      trips: applyDirectionFilters(
-        restoreWalkTimes(schedule.trips, pairs),
-        pairs,
+      trips: customizeSchedule(schedule.trips, pairs, {
         limit,
-      ),
+        sortBy: "arrivalTime",
+      }),
     };
   });
 }

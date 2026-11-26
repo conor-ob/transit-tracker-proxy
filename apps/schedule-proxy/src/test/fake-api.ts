@@ -29,28 +29,47 @@ export const trips = Array.from({ length: 12 }, (_, i) => ({
   departureTime: NOW + 90 + i * 300,
 }));
 
+export const BUS = "46A";
+export const BUS_STOP = "8220DB000123";
+
+// 6 bus trips, 10 minutes apart starting 200 seconds from NOW
+export const busTrips = Array.from({ length: 6 }, (_, i) => ({
+  tripId: `bus-${i}`,
+  routeId: BUS,
+  stopId: BUS_STOP,
+  directionId: "0",
+  arrivalTime: NOW + 200 + i * 600,
+  departureTime: NOW + 230 + i * 600,
+}));
+
 // What upstream does with the pairs it receives: adds each pair's offset to its
-// trips' times, drops trips no longer in the future, then applies the limit
-function upstreamSchedule(routeStopPairs: string, limit: number) {
+// trips' times, drops trips no longer in the future, sorts by the shifted
+// time, then applies the limit
+function upstreamSchedule(
+  routeStopPairs: string,
+  limit: number,
+  sortBy: "arrivalTime" | "departureTime" = "arrivalTime",
+) {
   const offsets = routeStopPairs.split(";").map((pair) => {
     const [routeId, stopId, offset] = pair.split(",");
     return { routeId, stopId, offset: Number(offset ?? 0) };
   });
 
-  return trips
-    .map((trip) => {
-      const offset =
-        offsets.find(
-          (pair) =>
-            pair.routeId === trip.routeId && pair.stopId === trip.stopId,
-        )?.offset ?? 0;
+  return [...trips, ...busTrips]
+    .flatMap((trip) => {
+      const pair = offsets.find(
+        (pair) => pair.routeId === trip.routeId && pair.stopId === trip.stopId,
+      );
+      if (pair === undefined) return [];
+      const { offset } = pair;
       return {
         ...trip,
         arrivalTime: trip.arrivalTime + offset,
         departureTime: trip.departureTime + offset,
       };
     })
-    .filter((trip) => trip.arrivalTime > NOW)
+    .filter((trip) => trip[sortBy] > NOW)
+    .sort((a, b) => a[sortBy] - b[sortBy])
     .slice(0, limit);
 }
 
@@ -62,7 +81,7 @@ export class FakeApi {
   wsRequests: IncomingMessage[] = [];
   wsMessages: {
     event: string;
-    data: { routeStopPairs: string; limit: number };
+    data: { routeStopPairs: string; limit: number; sortByDeparture?: boolean };
   }[] = [];
 
   constructor() {
@@ -110,6 +129,9 @@ export class FakeApi {
                 trips: upstreamSchedule(
                   message.data.routeStopPairs,
                   message.data.limit,
+                  message.data.sortByDeparture
+                    ? "departureTime"
+                    : "arrivalTime",
                 ),
               },
             }),
