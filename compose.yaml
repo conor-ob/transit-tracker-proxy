@@ -1,6 +1,6 @@
 services:
   transit-tracker-api:
-    image: ghcr.io/tjhorner/transit-tracker-api:main
+    image: ghcr.io/tjhorner/transit-tracker-api:main@sha256:4bd9cbc23633bd2be1c6aaaee0207be08baa4d1e5e956cdd24c285a5b4916881
     depends_on:
       postgres:
         condition: service_healthy
@@ -40,7 +40,7 @@ services:
       - "8080:8080"
 
   postgres:
-    image: postgres:18
+    image: postgres:18.7@sha256:64c8b0d31e4ab6ea665e8426ea406a94bf52de3c05b3a4a8bf713704eefa9328
     expose:
       - "5432"
     environment:
@@ -56,7 +56,7 @@ services:
       retries: 15
 
   redis:
-    image: redis:8
+    image: redis:8.12.0@sha256:3c4881844c6421f29fb9f9e8ca4f573d9fbdfb35967d65834504b6994cf6cd3b
     expose:
       - "6379"
 

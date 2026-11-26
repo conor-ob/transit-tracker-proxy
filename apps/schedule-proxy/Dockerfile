@@ -3,9 +3,7 @@
 # Applies Direction filters to the schedule between the gateway and transit-tracker-api.
 # Built from the repo root so turbo can prune the workspace down to this app
 
-ARG NODE_VERSION=24
-
-FROM node:${NODE_VERSION}-alpine AS base
+FROM node:24.22.3-alpine@sha256:116b800c3754b440ee0aa3ed2f20f5bf3d99a554bfd9adeea09ea8017f6e85f5 AS base
 RUN apk add --no-cache libc6-compat
 # Use the pnpm version pinned in package.json#packageManager
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
@@ -36,7 +34,7 @@ RUN rm -rf ./**/*/src
 
 
 # Run schedule-proxy as a non-root user
-FROM node:${NODE_VERSION}-alpine AS runner
+FROM node:24.22.3-alpine@sha256:116b800c3754b440ee0aa3ed2f20f5bf3d99a554bfd9adeea09ea8017f6e85f5 AS runner
 
 RUN addgroup --system --gid 1001 nodejs \
     && adduser --system --uid 1001 nodejs
