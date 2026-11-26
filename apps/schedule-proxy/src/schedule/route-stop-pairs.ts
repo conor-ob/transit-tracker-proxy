@@ -3,7 +3,8 @@ export type Direction = "0" | "1";
 export interface RouteStopPair {
   routeId: string;
   stopId: string;
-  offset: string;
+  // Seconds, 0 when the field is blank
+  walkTime: number;
   direction: Direction | null;
 }
 
@@ -11,19 +12,28 @@ export interface Trip {
   routeId: string;
   stopId: string;
   directionId: string | null;
+  // Unix seconds
+  arrivalTime: number;
+  departureTime: number;
 }
 
-export class InvalidDirectionError extends Error {}
+export class InvalidRouteStopPairError extends Error {}
 
-// "BRAY-HOWTH-I,8220IR0134,,1;46A,8220DB000123,-300"
+// "BRAY-HOWTH-I,8220IR0134,600,1;46A,8220DB000123,120"
 export function parseRouteStopPairs(raw: string): RouteStopPair[] {
   return raw.split(";").map((pair) => {
-    const [routeId = "", stopId = "", offset = "", direction = ""] = pair
+    const [routeId = "", stopId = "", walkTime = "", direction = ""] = pair
       .split(",")
       .map((part) => part.trim());
 
+    if (walkTime !== "" && !/^\d+$/.test(walkTime)) {
+      throw new InvalidRouteStopPairError(
+        "Invalid walk time; must be a whole number of seconds, 0 or more",
+      );
+    }
+
     if (direction !== "" && direction !== "0" && direction !== "1") {
-      throw new InvalidDirectionError(
+      throw new InvalidRouteStopPairError(
         `Invalid direction "${direction}"; must be 0 or 1`,
       );
     }
@@ -31,27 +41,29 @@ export function parseRouteStopPairs(raw: string): RouteStopPair[] {
     return {
       routeId,
       stopId,
-      offset,
+      walkTime: walkTime === "" ? 0 : Number(walkTime),
       direction: direction === "" ? null : direction,
     };
   });
 }
 
-// Upstream only ever sees routeId,stopId[,offset]. Malformed pairs are kept
-// as they are so upstream rejects them the way it always has
+// Upstream only ever sees routeId,stopId[,offset]. A Walk time goes up as a
+// negative offset, so upstream drops trips departing too soon before applying
+// its limit. Malformed pairs are kept as they are so upstream rejects them the
+// way it always has
 export function toUpstreamRouteStopPairs(pairs: RouteStopPair[]): string {
   return pairs
-    .map(({ routeId, stopId, offset }) =>
-      offset === "" ? `${routeId},${stopId}` : `${routeId},${stopId},${offset}`,
+    .map(({ routeId, stopId, walkTime }) =>
+      walkTime === 0
+        ? `${routeId},${stopId}`
+        : `${routeId},${stopId},-${walkTime}`,
     )
     .join(";");
 }
 
-export function applyDirectionFilters<T extends Trip>(
-  trips: T[],
-  pairs: RouteStopPair[],
-  limit: number,
-): T[] {
+export function applyDirectionFilters<
+  T extends Pick<Trip, "routeId" | "stopId" | "directionId">,
+>(trips: T[], pairs: RouteStopPair[], limit: number): T[] {
   const directions = new Map(
     pairs
       .filter((pair) => pair.direction !== null)
@@ -69,4 +81,29 @@ export function applyDirectionFilters<T extends Trip>(
       );
     })
     .slice(0, limit);
+}
+
+// Upstream shifted each trip's times back by its pair's Walk time, so add it
+// again to give the Device real times
+export function restoreWalkTimes<T extends Trip>(
+  trips: T[],
+  pairs: RouteStopPair[],
+): T[] {
+  const walkTimes = new Map<string, number>();
+  for (const { routeId, stopId, walkTime } of pairs) {
+    const key = `${routeId},${stopId}`;
+    // Upstream uses the first pair for a route and stop
+    if (!walkTimes.has(key)) walkTimes.set(key, walkTime);
+  }
+
+  return trips.map((trip) => {
+    const walkTime = walkTimes.get(`${trip.routeId},${trip.stopId}`) ?? 0;
+    return walkTime === 0
+      ? trip
+      : {
+          ...trip,
+          arrivalTime: trip.arrivalTime + walkTime,
+          departureTime: trip.departureTime + walkTime,
+        };
+  });
 }

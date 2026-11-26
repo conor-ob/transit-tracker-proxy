@@ -14,15 +14,45 @@ import { createServer } from "~/server";
 export const DART = "BRAY-HOWTH-I";
 export const PEARSE = "8220IR0134";
 
-// 12 trips at Pearse, alternating northbound (0) and southbound (1), as
-// upstream would return them for an unfiltered pair
+// The fake upstream's clock, in Unix seconds
+export const NOW = 1_800_000_000;
+
+// 12 trips at Pearse, 5 minutes apart starting a minute from NOW, alternating
+// northbound (0) and southbound (1), as upstream would return them for an
+// unfiltered pair
 export const trips = Array.from({ length: 12 }, (_, i) => ({
   tripId: `trip-${i}`,
   routeId: DART,
   stopId: PEARSE,
   directionId: String(i % 2),
-  arrivalTime: 1_800_000_000 + i * 300,
+  arrivalTime: NOW + 60 + i * 300,
+  departureTime: NOW + 90 + i * 300,
 }));
+
+// What upstream does with the pairs it receives: adds each pair's offset to its
+// trips' times, drops trips no longer in the future, then applies the limit
+function upstreamSchedule(routeStopPairs: string, limit: number) {
+  const offsets = routeStopPairs.split(";").map((pair) => {
+    const [routeId, stopId, offset] = pair.split(",");
+    return { routeId, stopId, offset: Number(offset ?? 0) };
+  });
+
+  return trips
+    .map((trip) => {
+      const offset =
+        offsets.find(
+          (pair) =>
+            pair.routeId === trip.routeId && pair.stopId === trip.stopId,
+        )?.offset ?? 0;
+      return {
+        ...trip,
+        arrivalTime: trip.arrivalTime + offset,
+        departureTime: trip.departureTime + offset,
+      };
+    })
+    .filter((trip) => trip.arrivalTime > NOW)
+    .slice(0, limit);
+}
 
 // Stands in for upstream: records what it receives, and answers like it does
 export class FakeApi {
@@ -42,14 +72,16 @@ export class FakeApi {
       const pairs = decodeURIComponent(url.pathname.replace("/schedule/", ""));
 
       if (
-        pairs
-          .split(";")
-          .some((pair) => Number.isNaN(Number(pair.split(",")[2] ?? 0)))
+        pairs.split(";").some((pair) => {
+          const [routeId, stopId] = pair.split(",");
+          return !routeId || !stopId;
+        })
       ) {
         response.writeHead(400, { "content-type": "application/json" });
         response.end(
           JSON.stringify({
-            message: "Invalid offset; must be a number",
+            message:
+              "Invalid route-stop pair; must be in the format routeId,stopId[,offset]",
             error: "Bad Request",
             statusCode: 400,
           }),
@@ -59,7 +91,7 @@ export class FakeApi {
 
       const limit = Math.min(Number(url.searchParams.get("limit") ?? 10), 10);
       response.writeHead(200, { "content-type": "application/json" });
-      response.end(JSON.stringify({ trips: trips.slice(0, limit) }));
+      response.end(JSON.stringify({ trips: upstreamSchedule(pairs, limit) }));
     });
 
     this.wss = new WebSocketServer({ server: this.server });
@@ -74,7 +106,12 @@ export class FakeApi {
           socket.send(
             JSON.stringify({
               event: "schedule",
-              data: { trips: trips.slice(0, message.data.limit) },
+              data: {
+                trips: upstreamSchedule(
+                  message.data.routeStopPairs,
+                  message.data.limit,
+                ),
+              },
             }),
           );
         }

@@ -3,9 +3,10 @@ import { type RawData, WebSocket } from "ws";
 
 import {
   applyDirectionFilters,
-  InvalidDirectionError,
+  InvalidRouteStopPairError,
   parseRouteStopPairs,
   type RouteStopPair,
+  restoreWalkTimes,
   type Trip,
   toUpstreamRouteStopPairs,
 } from "~/schedule/route-stop-pairs";
@@ -88,7 +89,7 @@ export default function (fastify: FastifyInstance, apiWsUrl: string) {
       try {
         pairs = parseRouteStopPairs(data.routeStopPairs);
       } catch (error) {
-        if (error instanceof InvalidDirectionError) {
+        if (error instanceof InvalidRouteStopPairError) {
           // Upstream's reply to a bad request, which leaves the connection open
           device.send(
             JSON.stringify({ kind: "invalidInput", error: error.message }),
@@ -141,7 +142,7 @@ export default function (fastify: FastifyInstance, apiWsUrl: string) {
           data: {
             ...data,
             trips: applyDirectionFilters(
-              data.trips as Trip[],
+              restoreWalkTimes(data.trips as Trip[], subscription.pairs),
               subscription.pairs,
               subscription.limit,
             ),

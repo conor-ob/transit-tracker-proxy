@@ -46,11 +46,11 @@ describe("WebSocket schedule", () => {
     ]);
   });
 
-  it("subscribes upstream without Direction filters, at upstream's maximum limit", async () => {
+  it("subscribes upstream without Direction filters, with Walk times as negative offsets, at upstream's maximum limit", async () => {
     await subscribe(
       {
         feedCode: "nta",
-        routeStopPairs: `${DART},${PEARSE},,1;46A,8220DB000123,-300`,
+        routeStopPairs: `${DART},${PEARSE},,1;46A,8220DB000123,300`,
         limit: 3,
       },
       2,
@@ -75,6 +75,29 @@ describe("WebSocket schedule", () => {
     )) as [unknown, { data: { trips: typeof trips } }];
 
     expect(schedule.data.trips).toEqual(trips.slice(0, 5));
+  });
+
+  it("hides trips that can't be caught in the Walk time, showing real times", async () => {
+    const [, schedule] = (await subscribe(
+      { routeStopPairs: `${DART},${PEARSE},600,1`, limit: 3 },
+      2,
+    )) as [unknown, { data: { trips: typeof trips } }];
+
+    // trip-1 departs 6 minutes from now, inside the 10-minute Walk time
+    expect(schedule.data.trips).toEqual([trips[3], trips[5], trips[7]]);
+  });
+
+  it("rejects an invalid Walk time without subscribing upstream", async () => {
+    const [error] = await subscribe(
+      { routeStopPairs: `${DART},${PEARSE},-600`, limit: 3 },
+      1,
+    );
+
+    expect(error).toEqual({
+      kind: "invalidInput",
+      error: "Invalid walk time; must be a whole number of seconds, 0 or more",
+    });
+    expect(proxy.fakeApi.wsMessages).toEqual([]);
   });
 
   it("rejects an invalid Direction without subscribing upstream", async () => {

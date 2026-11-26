@@ -16,15 +16,52 @@ describe("REST schedule", () => {
     ).toEqual(["trip-1", "trip-3", "trip-5"]);
   });
 
-  it("asks upstream for its maximum limit without Direction filters", async () => {
+  it("asks upstream for its maximum limit, with the Walk time as a negative offset and without Direction filters", async () => {
     await proxy.server.inject(
-      `/schedule/${encodeURIComponent(`${DART},${PEARSE},-300,1`)}?limit=3`,
+      `/schedule/${encodeURIComponent(`${DART},${PEARSE},300,1`)}?limit=3`,
     );
 
     expect(proxy.fakeApi.restRequests[0]?.url).toBe(
       `/schedule/${encodeURIComponent(`${DART},${PEARSE},-300`)}?limit=10`,
     );
   });
+
+  it("hides trips that can't be caught in the Walk time, showing real times", async () => {
+    const response = await proxy.server.inject(
+      `/schedule/${encodeURIComponent(`${DART},${PEARSE},600,1`)}?limit=3`,
+    );
+
+    // trip-1 departs 6 minutes from now, inside the 10-minute Walk time
+    expect(response.json()).toEqual({
+      trips: [trips[3], trips[5], trips[7]],
+    });
+  });
+
+  it("restores each pair's own Walk time", async () => {
+    const response = await proxy.server.inject(
+      `/schedule/${encodeURIComponent(`${DART},${PEARSE},600;46A,8220DB000123,120`)}?limit=2`,
+    );
+
+    expect(response.json()).toEqual({ trips: [trips[2], trips[3]] });
+  });
+
+  it.each(["-300", "soon", "1.5"])(
+    'rejects Walk time "%s" as a bad request',
+    async (walkTime) => {
+      const response = await proxy.server.inject(
+        `/schedule/${encodeURIComponent(`${DART},${PEARSE},${walkTime}`)}`,
+      );
+
+      expect(response.statusCode).toBe(400);
+      expect(response.json()).toEqual({
+        message:
+          "Invalid walk time; must be a whole number of seconds, 0 or more",
+        error: "Bad Request",
+        statusCode: 400,
+      });
+      expect(proxy.fakeApi.restRequests).toHaveLength(0);
+    },
+  );
 
   it("returns exactly what upstream does without Direction filters", async () => {
     const response = await proxy.server.inject(
@@ -46,7 +83,7 @@ describe("REST schedule", () => {
     // Upstream's maximum of 25 pairs, with NTA-length IDs and Direction filters
     const pairs = Array.from(
       { length: 25 },
-      (_, i) => `nta:3 ${100 + i} e a,nta:8250DB0030${10 + i},-300,0`,
+      (_, i) => `nta:3_${100 + i}_e_a,nta:8250DB0030${10 + i},600,0`,
     ).join(";");
 
     const response = await proxy.server.inject(
@@ -71,12 +108,13 @@ describe("REST schedule", () => {
 
   it("passes upstream errors through unchanged", async () => {
     const response = await proxy.server.inject(
-      `/schedule/${encodeURIComponent(`${DART},${PEARSE},soon,1`)}`,
+      `/schedule/${encodeURIComponent(DART)}`,
     );
 
     expect(response.statusCode).toBe(400);
     expect(response.json()).toEqual({
-      message: "Invalid offset; must be a number",
+      message:
+        "Invalid route-stop pair; must be in the format routeId,stopId[,offset]",
       error: "Bad Request",
       statusCode: 400,
     });
