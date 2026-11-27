@@ -46,3 +46,22 @@ jobs:
       - name: Typecheck, Build, Test
         if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
         run: pnpm turbo run typecheck build test --continue
+
+  # Railway builds these Dockerfiles on deploy, so build them here first.
+  # Otherwise an auto-merged image update could break the build and only
+  # show up as a failed deploy on main.
+  docker:
+    name: 🐳 Docker (${{ matrix.app }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app:
+          - gateway
+          - schedule-proxy
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Build image
+        run: docker build --file apps/${{ matrix.app }}/Dockerfile .
