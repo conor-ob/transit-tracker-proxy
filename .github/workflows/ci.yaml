@@ -82,8 +82,14 @@ jobs:
     needs:
       - node
       - docker
-    if: always()
+    if: ${{ always() }}
     steps:
-      - name: Fail on failed or cancelled jobs
-        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
-        run: exit 1
+      # always() here too: a step's default success() would skip it on a
+      # cancelled run, and the gate would pass with nothing checked.
+      - name: Check results
+        if: ${{ always() }}
+        run: |
+          jq -r 'to_entries[] | "\(.key): \(.value.result)"' <<<"$NEEDS"
+          jq -e 'all(.[]; .result != "failure" and .result != "cancelled")' <<<"$NEEDS" >/dev/null
+        env:
+          NEEDS: ${{ toJSON(needs) }}
