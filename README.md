@@ -126,8 +126,8 @@ Route styles are set in `route_styles_config`, one `route;name;colour` line per 
 
 It's a [Turborepo](https://turborepo.com) monorepo on pnpm workspaces. Install dependencies with `pnpm install`, then:
 
-- `pnpm lint`: Biome formatting, lint and import order
-- `pnpm lint:fix`: apply Biome fixes
+- `pnpm check`: Biome formatting, lint and import order
+- `pnpm check:fix`: apply Biome fixes
 - `pnpm typecheck`: type-check every app
 - `pnpm build`: build every app (`schedule-proxy` is bundled with [tsdown](https://tsdown.dev) into `dist/index.mjs`)
 - `pnpm test`: run every app's tests

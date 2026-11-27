@@ -43,8 +43,8 @@ jobs:
         id: install
         run: pnpm install --frozen-lockfile
 
-      # biome ci, not pnpm lint (biome check): Biome's CI-only variant
-      # never writes and annotates the PR.
+      # biome ci is Biome's CI variant of biome check: formatting, lint rules
+      # and import order, never writes, and annotates the PR.
       - name: Lint
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm biome ci .
