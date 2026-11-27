@@ -19,10 +19,13 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# Every new job must be added to the gate's needs: below, or protect-main
+# won't wait for it.
 jobs:
-  checks:
-    name: 🔍 Check
+  node:
+    name: 🟢 Node
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -37,14 +40,17 @@ jobs:
           cache: pnpm
 
       - name: Install deps
-        id: setup
+        id: install
         run: pnpm install --frozen-lockfile
 
-      - name: Check
+      # biome ci is Biome's CI variant of biome check: formatting, lint rules
+      # and import order, never writes, and annotates the PR.
+      - name: Lint
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm biome ci .
 
       - name: Typecheck, Build, Test
-        if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm turbo run typecheck build test --continue
 
   # Railway builds these Dockerfiles on deploy, so build them here first.
@@ -53,6 +59,7 @@ jobs:
   docker:
     name: 🐳 Docker (${{ matrix.app }})
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -65,3 +72,24 @@ jobs:
 
       - name: Build image
         run: docker build --file apps/${{ matrix.app }}/Dockerfile .
+
+  # The one check protect-main requires. if: always() keeps it running when a
+  # job it needs fails: a skipped required check counts as passed.
+  gate:
+    name: 🚦 Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs:
+      - node
+      - docker
+    if: ${{ always() }}
+    steps:
+      # always() here too: a step's default success() would skip it on a
+      # cancelled run, and the gate would pass with nothing checked.
+      - name: Check results
+        if: ${{ always() }}
+        run: |
+          jq -r 'to_entries[] | "\(.key): \(.value.result)"' <<<"$NEEDS"
+          jq -e 'all(.[]; .result != "failure" and .result != "cancelled")' <<<"$NEEDS" >/dev/null
+        env:
+          NEEDS: ${{ toJSON(needs) }}
