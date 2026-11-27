@@ -5,5 +5,3 @@ COPY apps/gateway/Caddyfile /etc/caddy/Caddyfile
 
 RUN caddy fmt --overwrite /etc/caddy/Caddyfile
 CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
-
-RUN exit 1
