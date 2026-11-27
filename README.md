@@ -126,14 +126,14 @@ Route styles are set in `route_styles_config`, one `route;name;colour` line per 
 
 It's a [Turborepo](https://turborepo.com) monorepo on pnpm workspaces. Install dependencies with `pnpm install`, then:
 
-- `pnpm check`: Biome formatting, lint and import order
-- `pnpm check:fix`: apply Biome fixes
+- `pnpm lint`: Biome formatting, lint and import order
+- `pnpm lint:fix`: apply Biome fixes
 - `pnpm typecheck`: type-check every app
 - `pnpm build`: build every app (`schedule-proxy` is bundled with [tsdown](https://tsdown.dev) into `dist/index.mjs`)
 - `pnpm test`: run every app's tests
 - `pnpm dev`: run every app in watch mode (copy `apps/schedule-proxy/.env.example` to `.env` first; the env is validated at startup against [`src/env/schema.ts`](apps/schedule-proxy/src/env/schema.ts))
 
-CI ([`ci.yaml`](.github/workflows/ci.yaml)) runs the checks, typecheck, build and tests on every PR, and builds the `gateway` and `schedule-proxy` Docker images that Railway deploys.
+CI ([`ci.yaml`](.github/workflows/ci.yaml)) runs lint, typecheck, build and tests on every PR, and builds the `gateway` and `schedule-proxy` Docker images that Railway deploys.
 
 ## Credits
 
