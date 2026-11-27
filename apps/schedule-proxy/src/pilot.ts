@@ -1,3 +1,1 @@
-export const pilot = () => {
-  debugger;
-};
+export const pilot: number = "not a number";
