@@ -15,7 +15,7 @@
     "dotenv": "^18.0.10",
     "fastify": "^5.12.8",
     "ws": "^8.23.0",
-    "zod": "^4.6.5"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@total-typescript/tsconfig": "^1.0.4",
