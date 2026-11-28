@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1
+# syntax=docker/dockerfile:1@sha256:572cebbc2b15e6f84c077742952674889cb63cd5e9b80abdffcbe587b6f19183
 
 # Applies Direction filters to the schedule between the gateway and transit-tracker-api.
 # Built from the repo root so turbo can prune the workspace down to this app
